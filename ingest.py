@@ -25,6 +25,7 @@ LOADERS_BY_SUFFIX = {
     ".html": BSHTMLLoader,
     ".htm": BSHTMLLoader,
 }
+skipping = {}  # for reporting skipped sources (blocked or missing)
 
 
 def looks_blocked(text):
@@ -37,32 +38,67 @@ def cache_path_for(url):
 
 
 # Loads Individual Source
-def load_source(title, link):
+def normalize_text(text: str):
+    lines = []
+    blank_lines = 0
+    for line in text.splitlines():
+        line = line.strip()
+        if line:
+            lines.append(line)
+            blank_lines = 0
+        elif blank_lines < 2:
+            lines.append("")
+            blank_lines += 1
+    return "\n".join(lines).strip()
+
+
+def load_source(title, link, collected_date=None, notes=None):
     if link.startswith("http://") or link.startswith("https://"):
         docs = WebBaseLoader(link).load()
         cache_path = cache_path_for(link)
         if not docs or looks_blocked(docs[0].page_content):
             if cache_path.exists():
+                skipping["title"] = title
+                skipping["link"] = link
+                skipping["date_collected"] = collected_date
+                skipping["notes"] = notes
+                skipping["reason"] = f"Warning: '{title}' looks blocked (bot challenge?) - using last known-good cached copy"
                 print(f"Warning: '{title}' looks blocked (bot challenge?) - using last known-good cached copy")
                 docs = [Document(page_content=cache_path.read_text(encoding="utf-8"), metadata={"source": link})]
             else:
+                skipping["title"] = title
+                skipping["link"] = link
+                skipping["date_collected"] = collected_date
+                skipping["notes"] = notes
+                skipping["reason"] = f"Skipping '{title}': fetch looks blocked (bot challenge?) and no cached copy to fall back on"
                 print(f"Skipping '{title}': fetch looks blocked (bot challenge?) and no cached copy to fall back on")
                 return []
         else:
             CACHE_DIR.mkdir(parents=True, exist_ok=True)
-            cache_path.write_text(docs[0].page_content, encoding="utf-8")
+            cache_path.write_text(normalize_text(docs[0].page_content), encoding="utf-8")
     else:
         path = DATA_DIR / link
         loader_cls = LOADERS_BY_SUFFIX.get(path.suffix.lower())
         if not path.exists():
+            skipping["title"] = title
+            skipping["link"] = link
+            skipping["date_collected"] = collected_date
+            skipping["notes"] = notes
+            skipping["reason"] = f"Skipping '{title}': file not found at {path}"
             print(f"Skipping '{title}': file not found at {path}")
             return []
         if loader_cls is None:
+            skipping["title"] = title
+            skipping["link"] = link
+            skipping["date_collected"] = collected_date
+            skipping["notes"] = notes
+            skipping["reason"] = f"Skipping '{title}': unsupported file type {path.suffix}"
             print(f"Skipping '{title}': unsupported file type {path.suffix}")
             return []
         docs = loader_cls(str(path)).load()
 
     for doc in docs:
+        doc.page_content = normalize_text(doc.page_content)
         doc.metadata["title"] = title
     return docs
 
@@ -71,12 +107,16 @@ def load_all_sources():
     docs = []
     with open(SOURCES_CSV, newline="", encoding="utf-8") as f:
         for row in csv.DictReader(f):
-            title, link = row["title"].strip(), row["link"].strip()
+            title, link, date_collected, notes = row["title"].strip(), row["link"].strip(), row["date_collected"].strip(), row["notes"].strip()
             if not link:
                 continue
-            docs.extend(load_source(title, link)) # uses previously defined function
+            docs.extend(load_source(title, link, date_collected, notes)) # uses previously defined function
+            with open("skipped_file.csv", "a", newline="", encoding="utf-8") as skipped_file:
+                writer = csv.DictWriter(skipped_file, fieldnames=["title", "link", "date_collected", "reason","notes"])
+                if skipping:
+                    writer.writerow(skipping)
+                skipping.clear()  # Clear the skipping dictionary for the next iteration
     return docs
-
 
 docs = load_all_sources()                                # 1. load + strip HTML/PDF text
 
