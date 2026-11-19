@@ -5,5 +5,7 @@ langchain-huggingface
 langchain-chroma
 sentence-transformers
 pypdf
+beautifulsoup4
 gradio
 google-genai
+python-dotenv

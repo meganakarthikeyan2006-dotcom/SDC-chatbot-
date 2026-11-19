@@ -1,2 +1,6 @@
 .env
 __pycache__/
+CLAUDE.md
+chroma_db/
+data/.cache/
+.venv/
