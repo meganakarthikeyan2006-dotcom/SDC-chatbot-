@@ -98,12 +98,48 @@ def answer(question):
     return {"answer": response.text.strip(), "sources": list_sources(passages)}
 
 
-# Step 7: Gradio chat window (Engineer 3) goes here; it should call answer(question).
+
+
+# Step 7: Gradio chat window
+import gradio as gr
+
+def chat_response(message, history):
+  result = answer(message)
+  response = result["answer"]
+
+  if result["sources"]:
+    response += "\n\n**Retrieved Sources:**\n"
+
+    for title, link in result["sources"]:
+      response += f"\n- [{title}]({link})"
+
+    return response
+
+demo = gr.ChatInterface(
+fn=chat_response, title="AggieAccess", description = (
+  "Your UC Davis Student Disability Center "
+  "accommodations and accessibility assistant. "
+  "Please do not enter medical or personal information."), 
+
+examples = [
+    "How do I register with the SDC?",
+    "How can I request exam accomodations?",
+    "Can I get accessible housing?",
+    "What accessibility resources does UC Davis offer?"
+  ] 
+)
+
 
 
 
 # allows me to test from terminal
-if __name__ == "__main__":
+if __name__ == "__main__" and len(sys.argv) == 1:
+    demo.launch()
+
+elif __name__ == "__main__" and len(sys.argv) == 1:
+    demo.launch()
+
+elif __name__ == "__main__":
     question = " ".join(sys.argv[1:]) or "Can I get accessible housing?"
     print(f"Question: {question}\n")
     print("Passages found (smaller distance = closer match):")
