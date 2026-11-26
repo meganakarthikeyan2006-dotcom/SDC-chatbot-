@@ -138,6 +138,14 @@ theme = gr.themes.Soft(
 )
 
 custom_css = """
+
+#aggie-input .progress-bar,
+#aggie-input .progress-text,
+#aggie-input .eta-bar,
+#aggie-input .loading {
+    display: none !important;
+}
+
 body, .gradio-container {
     background: #071D36 !important;
     color: #FFFFFF !important;
@@ -319,7 +327,7 @@ with gr.Blocks(title="AggieAccess", fill_width=True) as demo:
     </div>
     """)
 
-    chat_interface = chat_interface = chat_interface = gr.ChatInterface(
+    chat_interface = gr.ChatInterface(
         fn=chat_response,
         chatbot=gr.Chatbot(
             height=260,
@@ -328,6 +336,7 @@ with gr.Blocks(title="AggieAccess", fill_width=True) as demo:
             label="AggieAccess Assistant"
         ),
         textbox=gr.Textbox(
+            elem_id="aggie-input",
             placeholder="Ask AggieAccess a question...",
             container=False,
             submit_btn="Send"
@@ -341,22 +350,31 @@ with gr.Blocks(title="AggieAccess", fill_width=True) as demo:
         cache_examples=False
     )
 
-    chat_interface.chatbot.clear(
-        fn=lambda: "",
-        inputs=None,
-        outputs=chat_interface.textbox
+
+
+
+
+
+    chat_interface.textbox.change(
+        fn=lambda value: gr.update(
+            placeholder="Ask AggieAccess a question..."
+        ),
+        inputs=chat_interface.textbox,
+        outputs=chat_interface.textbox,
+        queue=False,
+        show_progress="hidden"
     )
 
     chat_interface.chatbot.clear(
-        fn=lambda: "",
+        fn=lambda: gr.update(
+            value="",
+            placeholder="Ask AggieAccess a question...",
+            interactive=True
+        ),
         inputs=None,
-        outputs=chat_interface.textbox
-    )
-
-    chat_interface.chatbot.clear(
-        fn=lambda: "",
-        inputs=None,
-        outputs=chat_interface.textbox
+        outputs=chat_interface.textbox,
+        queue=False,
+        show_progress="hidden"
     )
 
     gr.HTML("""
