@@ -38,7 +38,15 @@ def cache_path_for(url):
 
 # Loads Individual Source
 def load_source(title, link):
-    if link.startswith("http://") or link.startswith("https://"):
+    is_web = link.startswith("http://") or link.startswith("https://")
+    if is_web and link.lower().split("?")[0].endswith(".pdf"):
+        # Online PDF: use the PDF reader (the web page reader turns PDFs into garbled text)
+        try:
+            docs = PyPDFLoader(link).load()
+        except Exception as e:
+            print(f"Skipping '{title}': could not download PDF ({e}). Save it into data/ and list the file name instead.")
+            return []
+    elif is_web:
         docs = WebBaseLoader(link).load()
         cache_path = cache_path_for(link)
         if not docs or looks_blocked(docs[0].page_content):
